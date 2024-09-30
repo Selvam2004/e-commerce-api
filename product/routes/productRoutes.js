@@ -6,6 +6,7 @@ const productController = require('../controllers/productController');
 router.post('/addproducts', productController.createProduct);
 router.post('/addMultipleproducts',productController.createMultipleProducts);
 // Get all products
+router.get('/getElasticSearch', productController.getElasticSearch); 
 router.get('/getproducts', productController.getAllProducts); 
 router.get('/getcategoryproducts/:name', productController.getCategoryProducts);
   
