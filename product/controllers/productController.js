@@ -131,7 +131,7 @@ exports.getElasticSearch =  async (req, res) => {
                 }
               },
               {
-                match_phrase_prefix: {
+                match_phrase_prefix: e-commer{
                   categoryName: queryParam // Match categoryName with prefix (add more fields as needed)
                 }
               },
