@@ -3,7 +3,7 @@ const Category = require('../models/Category');
 // Create a new category
 exports.createCategory = async (req, res) => {
   try {
-    const { name, description, imageUrl } = req.body;
+    const { name, description, imageUrl } = req.body; 
 
     // Check if category with the same name already exists
     let category = await Category.findOne({ name });

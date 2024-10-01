@@ -3,7 +3,7 @@ const Category = require('../models/Category');
 const { Client } = require('@elastic/elasticsearch');
 const client = new Client({
   node: 'http://localhost:9200' // your Elasticsearch server
-});;
+});
 // Create a new product
 exports.createProduct = async (req, res) => {
   try {
@@ -60,13 +60,13 @@ exports.createMultipleProducts = async (req, res) => {
     // Validate if the array is present
     if (!Array.isArray(productsArray) || productsArray.length === 0) {
       return res.status(400).json({ message: 'No products provided' });
-    }
+    } 
 
     const createdProducts = [];
 
     // Loop through each product in the array
     for (let productData of productsArray) {
-      const { productName, categoryName, imageUrl, originalPrice, discountPrice, currentStock } = productData;
+      const { productName, categoryName,description, imageUrl, originalPrice, discountPrice, currentStock } = productData;
 
       // Check if category is provided for each product
     
@@ -86,7 +86,8 @@ exports.createMultipleProducts = async (req, res) => {
       // Create the new product
       const product = new Product({
         productName,
-        categoryName, // Use the ObjectId of the category
+        categoryName, 
+        description,// Use the ObjectId of the category
         imageUrl,
         originalPrice,
         discountPrice,
@@ -116,36 +117,49 @@ exports.createMultipleProducts = async (req, res) => {
 
 
 exports.getElasticSearch =  async (req, res) => {
-  try {
-    // Assuming you're passing query params like ?name=Product%20A
-    const queryParam = req.query.name||''; 
+  try { 
+    const page = parseInt(req.query.page)||1;
+    const pageSize = parseInt(req.query.pageSize)||6; 
+    const search = req.query.search||"";
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = page * pageSize;  
     const response = await client.search({
       index: 'products',
       body: {
+        size:100,
         query: { 
           bool: {
             should: [
               {
                 match_phrase_prefix: {
-                  productName: queryParam // Match productName with prefix
+                  productName: search// Match productName with prefix
                 }
               },
               {
-                match_phrase_prefix: e-commer{
-                  categoryName: queryParam // Match categoryName with prefix (add more fields as needed)
+                match_phrase_prefix: {
+                  categoryName: search // Match categoryName with prefix (add more fields as needed)
                 }
               },
+              {
+                match_phrase_prefix: {
+                  description: search // Match categoryName with prefix (add more fields as needed)
+                }
+              },
+              
               // Add more fields here if needed
             ]
           }
           
         }
       }
-    });  
-    const hits = response.hits.hits.map(hit => hit._source);
-    // Check if results are found
-    if (hits && hits.length > 0) {
-      res.status(200).json(hits);
+    });   
+    const products = response.hits.hits.map(hit => hit._source);  
+    const totalCount =products.length;  
+    const totalPages = Math.ceil(totalCount/ pageSize);
+    const updatedProducts = products.slice(startIndex,endIndex)
+
+    if (updatedProducts && updatedProducts.length > 0) {
+      res.status(200).json({updatedProducts,totalPages});
     } else {
       res.status(404).json({ error: 'No results found' });
     }
@@ -153,7 +167,7 @@ exports.getElasticSearch =  async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 }
-      
+       
 // Get all products
 exports.getAllProducts = async (req, res) => {
   try {
@@ -163,7 +177,7 @@ exports.getAllProducts = async (req, res) => {
   const offset= (page - 1) * pageSize; 
   let products;
   products = await  Product.find({$or:[{productName:{$regex:search}},{categoryName:{$regex:search}}]}).skip(offset).limit(pageSize).lean();
-    const totalCount = await Product.find({productName:{$regex:search}}).countDocuments(); 
+    const totalCount = await Product.find({$or:[{productName:{$regex:search}},{categoryName:{$regex:search}}]}).countDocuments(); 
     const totalPages = Math.ceil(totalCount/ pageSize);
     res.status(200).json({products,totalPages});
   } catch (error) {
