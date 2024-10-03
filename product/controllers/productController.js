@@ -4,6 +4,113 @@ const { Client } = require('@elastic/elasticsearch');
 const client = new Client({
   node: 'http://localhost:9200' // your Elasticsearch server
 });
+
+
+
+exports.getElasticSearch =  async (req, res) => {
+  try { 
+    const page = parseInt(req.query.page)||1;
+    const pageSize = parseInt(req.query.pageSize)||6; 
+    const search = req.query.search||"";
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = page * pageSize;  
+    const response = await client.search({
+      index: 'products',
+      body: {
+        size:100,
+        query: { 
+          bool: {
+            should: [
+              {
+                match_phrase_prefix: {
+                  productName: search// Match productName with prefix
+                }
+              },
+              {
+                match_phrase_prefix: {
+                  categoryName: search // Match categoryName with prefix (add more fields as needed)
+                }
+              },
+              {
+                match_phrase_prefix: {
+                  description: search // Match categoryName with prefix (add more fields as needed)
+                }
+              },
+              
+              // Add more fields here if needed
+            ]
+          }
+          
+        }
+      }
+    });   
+    const products = response.hits.hits.map(hit => hit._source);  
+    const totalCount =products.length;  
+    const totalPages = Math.ceil(totalCount/ pageSize);
+    const updatedProducts = products.slice(startIndex,endIndex)
+
+    if (updatedProducts && updatedProducts.length > 0) {
+      res.status(200).json({updatedProducts,totalPages});
+    } else {
+      res.status(404).json({ error: 'No results found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+       
+// Get all products
+exports.getAllProducts = async (req, res) => {
+  try {
+  const page = parseInt(req.query.page)||1;
+  const pageSize = parseInt(req.query.pageSize)||6; 
+  const search = req.query.search||"";
+  const offset= (page - 1) * pageSize; 
+  let products;
+  products = await  Product.find({$or:[{productName:{$regex:search}},{categoryName:{$regex:search}}]}).skip(offset).limit(pageSize).lean();
+    const totalCount = await Product.find({$or:[{productName:{$regex:search}},{categoryName:{$regex:search}}]}).countDocuments(); 
+    const totalPages = Math.ceil(totalCount/ pageSize);
+    res.status(200).json({products,totalPages});
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+};
+
+exports.getCategoryProducts = async (req, res) => {
+  try {
+    const name = req.params.name; 
+   const page = parseInt(req.query.page)||1;
+    const pageSize = parseInt(req.query.pageSize)||6; 
+    
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = page * pageSize; 
+
+   
+
+    // Find category by name and populate its products
+    const category = await Category.findOne({ name }).populate('products');
+
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    // Extract the products
+    const products = category.products; 
+    const totalPages = Math.ceil(products.length / pageSize);
+    // Modify each product's category field to just the name
+    const updatedProducts = products.slice(startIndex, endIndex);
+
+    // Send the updated products
+    res.status(200).json({updatedProducts,totalPages} );
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+};
+
+ 
+
+
+
 // Create a new product
 exports.createProduct = async (req, res) => {
   try {
@@ -114,106 +221,3 @@ exports.createMultipleProducts = async (req, res) => {
     res.status(500).json({ message: 'Server error', error });
   }
 };  
-
-
-exports.getElasticSearch =  async (req, res) => {
-  try { 
-    const page = parseInt(req.query.page)||1;
-    const pageSize = parseInt(req.query.pageSize)||6; 
-    const search = req.query.search||"";
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = page * pageSize;  
-    const response = await client.search({
-      index: 'products',
-      body: {
-        size:100,
-        query: { 
-          bool: {
-            should: [
-              {
-                match_phrase_prefix: {
-                  productName: search// Match productName with prefix
-                }
-              },
-              {
-                match_phrase_prefix: {
-                  categoryName: search // Match categoryName with prefix (add more fields as needed)
-                }
-              },
-              {
-                match_phrase_prefix: {
-                  description: search // Match categoryName with prefix (add more fields as needed)
-                }
-              },
-              
-              // Add more fields here if needed
-            ]
-          }
-          
-        }
-      }
-    });   
-    const products = response.hits.hits.map(hit => hit._source);  
-    const totalCount =products.length;  
-    const totalPages = Math.ceil(totalCount/ pageSize);
-    const updatedProducts = products.slice(startIndex,endIndex)
-
-    if (updatedProducts && updatedProducts.length > 0) {
-      res.status(200).json({updatedProducts,totalPages});
-    } else {
-      res.status(404).json({ error: 'No results found' });
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-}
-       
-// Get all products
-exports.getAllProducts = async (req, res) => {
-  try {
-  const page = parseInt(req.query.page)||1;
-  const pageSize = parseInt(req.query.pageSize)||6; 
-  const search = req.query.search||"";
-  const offset= (page - 1) * pageSize; 
-  let products;
-  products = await  Product.find({$or:[{productName:{$regex:search}},{categoryName:{$regex:search}}]}).skip(offset).limit(pageSize).lean();
-    const totalCount = await Product.find({$or:[{productName:{$regex:search}},{categoryName:{$regex:search}}]}).countDocuments(); 
-    const totalPages = Math.ceil(totalCount/ pageSize);
-    res.status(200).json({products,totalPages});
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
-  }
-};
-
-exports.getCategoryProducts = async (req, res) => {
-  try {
-    const name = req.params.name; 
-   const page = parseInt(req.query.page)||1;
-    const pageSize = parseInt(req.query.pageSize)||6; 
-    
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = page * pageSize; 
-
-   
-
-    // Find category by name and populate its products
-    const category = await Category.findOne({ name }).populate('products');
-
-    if (!category) {
-      return res.status(404).json({ message: 'Category not found' });
-    }
-
-    // Extract the products
-    const products = category.products; 
-    const totalPages = Math.ceil(products.length / pageSize);
-    // Modify each product's category field to just the name
-    const updatedProducts = products.slice(startIndex, endIndex);
-
-    // Send the updated products
-    res.status(200).json({updatedProducts,totalPages} );
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
-  }
-};
-
- 

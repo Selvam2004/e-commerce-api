@@ -1,5 +1,18 @@
 const Category = require('../model/Category'); 
 
+
+// Get all categories
+exports.getAllCategories = async (req, res) => {
+  try {
+    const categories = await Category.find();
+    res.status(200).json(categories);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+};
+
+ 
+ 
 // Create a new category
 exports.createCategory = async (req, res) => {
   try {
@@ -19,16 +32,3 @@ exports.createCategory = async (req, res) => {
     res.status(500).json({ message: 'Server error', error });
   }
 };
-
-// Get all categories
-exports.getAllCategories = async (req, res) => {
-  try {
-    const categories = await Category.find();
-    res.status(200).json(categories);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
-  }
-};
-
- 
- 
