@@ -1,5 +1,5 @@
 const Product = require('../models/Product');
-const Category = require('../models/Category');
+const Category = require('../../category/model/Category');
 const { Client } = require('@elastic/elasticsearch');
 const client = new Client({
   node: 'http://localhost:9200' // your Elasticsearch server

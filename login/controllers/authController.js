@@ -12,10 +12,10 @@ exports.signup = async (req, res) => {
         const userExists = await User.findOne({ email });
         if (userExists) {
             return res.status(400).json({ message: 'User already exists' });
-        }
+        } 
 
         // Hash the password using bcrypt 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password, process.env.HASH);
 
         // Create new user with hashed password
         const user = new User({
@@ -47,8 +47,7 @@ exports.login = async (req, res) => {
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid password' });
         }
-        const token = jwt.sign({ name: user.name, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        res.cookie("token",token,{httpOnly: true ,secure:true,sameSite: 'none' });
+        const token = jwt.sign({ name: user.name, email: user.email }, process.env.JWT_SECRET); 
         res.status(200).json({ message: 'Login successful',token });
     } catch (error) {
         res.status(500).json({ message: 'Error logging in', error: error.message });
