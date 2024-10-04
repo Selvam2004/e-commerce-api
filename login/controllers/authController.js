@@ -3,7 +3,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require("jsonwebtoken");
 
 
-// Signup Controller
+// Signup Controller  
+
 exports.signup = async (req, res) => {
     const { name, email, password } = req.body;
 
@@ -12,24 +13,39 @@ exports.signup = async (req, res) => {
         const userExists = await User.findOne({ email });
         if (userExists) {
             return res.status(400).json({ message: 'User already exists' });
-        } 
+        }
 
-        // Hash the password using bcrypt 
-        const hashedPassword = await bcrypt.hash(password, process.env.HASH);
+        // Define salt rounds
+        const saltRounds = parseInt(process.env.SALT_ROUNDS) ;
 
-        // Create new user with hashed password
-        const user = new User({
-            name,
-            email,
-            password: hashedPassword
+        // Generate salt and hash password
+        bcrypt.genSalt(saltRounds, function (err, salt) {
+            if (err) {
+                return res.status(500).json({ message: 'Error generating salt', error: err.message });
+            }
+
+            bcrypt.hash(password, salt, async function (err, hashedPassword) {
+                if (err) {
+                    return res.status(500).json({ message: 'Error hashing password', error: err.message });
+                }
+
+                // Create new user with hashed password
+                const user = new User({
+                    name,
+                    email,
+                    password: hashedPassword
+                });
+
+                await user.save();
+                res.status(201).json({ message: 'User created successfully' });
+            });
         });
-
-        await user.save();
-        res.status(201).json({ message: 'User created successfully' });
     } catch (error) {
+        console.log(error);
         res.status(500).json({ message: 'Error creating user', error: error.message });
     }
 };
+
 
 // Login Controller
 exports.login = async (req, res) => {
@@ -47,7 +63,7 @@ exports.login = async (req, res) => {
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid password' });
         }
-        const token = jwt.sign({ name: user.name, email: user.email }, process.env.JWT_SECRET); 
+        const token = jwt.sign({ name: user.name, email: user.email }, process.env.JWT_SECRET,{expiresIn:'1hr'}); 
         res.status(200).json({ message: 'Login successful',token });
     } catch (error) {
         res.status(500).json({ message: 'Error logging in', error: error.message });
