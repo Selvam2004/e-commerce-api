@@ -10,14 +10,14 @@ exports.getElasticSearch = async (req, res) => {
     const pageSize = parseInt(req.query.pageSize)||6;  
     const startIndex = (page - 1) * pageSize;
     const endIndex = page * pageSize;  
-  const processedQuery = req.query.search || ''; // Default to an empty string if undefined
+  const input = req.query.search || ''; // Default to an empty string if undefined
 
-  if (!processedQuery) {
+  if (!input) {
     return res.status(400).json({ error: 'Search term is required.' });
   }
 
   // Regular expressions to extract price conditions and their values
-  const priceConditionMatch = processedQuery.match(/(above|below|greater than|less than|gt|lt|at|under|over)\s*(\d+)/i);
+  const priceConditionMatch = input.match(/(above|below|greater than|less than|gt|lt|at|under|over)\s*(\d+)/i);
   let rangeCondition = null;
   let priceValue = null;
 
@@ -38,14 +38,14 @@ exports.getElasticSearch = async (req, res) => {
         must: [
           {
             multi_match: {
-              query: processedQuery.replace(/(above|below|greater than|less than|gt|lt|under|over)\s*\d+/i, '').trim(),
+              query: input,
               fields: [
                 'productName^2', 
                 'categoryName^1',  
                 'description'  
               ],
               type: 'most_fields'  ,
-              fuzziness: '1'
+              //fuzziness: '1'
             },
           },
         ],
@@ -59,10 +59,9 @@ exports.getElasticSearch = async (req, res) => {
           },
         }),
       },
-    },
-    // Add aggregations for category suggestions
+    }, 
  
-    size: 50, // Limit the number of search results returned
+    size: 50, 
   };
 
  
